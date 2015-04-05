@@ -15,10 +15,10 @@ function addFiles(mocha, files) {
   glob.sync(root + files).forEach(mocha.addFile.bind(mocha));
 }
 
-addFiles(mocha, '/**/blueprint-test.js');
+addFiles(mocha, '/**/*.js');
 
 if (arg === 'all') {
-  // addFiles(mocha, '/**/*-slow.js');
+  addFiles(mocha, '/**/*-slow.js');
 }
 
 mocha.run(function(failures) {
