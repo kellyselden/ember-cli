@@ -13,7 +13,7 @@
     "test:debug": "node debug tests/runner",
     "test-all": "node tests/runner all",
     "test-all:debug": "node debug tests/runner all",
-    "test-all:cover": "istanbul cover tests/runner.js all"
+    "test-all:cover": "istanbul cover tests/runner.js all && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js && rm -rf ./coverage"
   },
   "repository": {
     "type": "git",
@@ -133,7 +133,7 @@
   "devDependencies": {
     "chai": "^2.1.2",
     "chai-as-promised": "^4.3.0",
-    "codeclimate-test-reporter": "0.0.4",
+    "coveralls": "^2.11.2",
     "ember-cli-ncp": "1.0.2",
     "github": "^0.2.3",
     "istanbul": "^0.3.13",
