@@ -922,6 +922,113 @@ describe.only('Compile', function() {
           });
         }));
 
+        it('resolves a cjs file', co.wrap(function *() {
+          appAndAddons.write({
+            'app-tree-output': {
+              'my-app': {
+                'app.js': `export { default } from 'lodash';\n`,
+              },
+            },
+          });
+
+          nodeModules.write({
+            'node_modules': {
+              'lodash': {
+                'index.js': `module.exports = 1;\n`,
+                'package.json': `{ "main": "index.js" }`,
+              },
+            },
+          });
+
+          yield compile();
+
+          expect(output.read()).to.deep.equal({
+            'app-tree-output': {
+              'my-app': {
+                'app.js': `export { default } from 'lodash';\n`,
+              },
+            },
+            'node_modules': {
+              'lodash': {
+                'index.js': `var lodash = 1;\n\nexport default lodash;\n`,
+              },
+            },
+          });
+        }));
+
+        it('resolves a cjs file with commonjs-proxy', co.wrap(function *() {
+          appAndAddons.write({
+            'app-tree-output': {
+              'my-app': {
+                'app.js': `export { default } from 'lodash';\n`,
+              },
+            },
+          });
+
+          nodeModules.write({
+            'node_modules': {
+              'lodash': {
+                'lodash.js': `module.exports = 1;\n`,
+                'index.js': `module.exports = require('./lodash');\n`,
+                'package.json': `{ "main": "index.js" }`,
+              },
+            },
+          });
+
+          yield compile();
+
+          expect(output.read()).to.deep.equal({
+            'app-tree-output': {
+              'my-app': {
+                'app.js': `export { default } from 'lodash';\n`,
+              },
+            },
+            'node_modules': {
+              'lodash': {
+                'lodash.js': `var lodash = 1;\n\nexport default lodash;\n`,
+                'index.js': `import require$$0 from './lodash';\n\nvar lodash = require$$0;\n\nexport default lodash;\n`,
+              },
+            },
+          });
+        }));
+
+        it('resolves a cjs file with commonjsHelpers', co.wrap(function *() {
+          appAndAddons.write({
+            'app-tree-output': {
+              'my-app': {
+                'app.js': `export { default } from 'lodash';\n`,
+              },
+            },
+          });
+
+          nodeModules.write({
+            'node_modules': {
+              'lodash': {
+                'index.js': `module.exports = typeof global == 'object' && global && global.Object === Object && global;\n`,
+                'package.json': `{ "main": "index.js" }`,
+              },
+            },
+          });
+
+          yield compile();
+
+          expect(output.read()).to.deep.equal({
+            'app-tree-output': {
+              'my-app': {
+                'app.js': `export { default } from 'lodash';\n`,
+              },
+            },
+            'node_modules': {
+              'lodash': {
+                'index.js': `import { commonjsGlobal } from 'vendor/commonjsHelpers';\n\nvar lodash = typeof commonjsGlobal == 'object' && commonjsGlobal && commonjsGlobal.Object === Object && commonjsGlobal;\n\nexport default lodash;\n`,
+              },
+            },
+            'vendor': {
+              'commonjsHelpers.js': `var commonjsGlobal = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};\n\nexport { commonjsGlobal };\n`,
+            },
+          });
+        }));
+
         it('ignores when turned off', co.wrap(function *() {
           appAndAddons.write({
             'app-tree-output': {
