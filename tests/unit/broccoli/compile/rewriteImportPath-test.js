@@ -10,37 +10,44 @@ describe.only('Compile - rewriteImportPath', function() {
   let appAndAddons;
   let amdModules;
   let nodeModulesSrc;
-  let projectRoot;
 
   let appDir;
   let addonDir;
 
+  let commonDir;
   let rewriteImportPath;
 
   beforeEach(function() {
     appAndAddons = path.resolve('/path/to/appAndAddons');
     amdModules = path.resolve('/path/to/amdModules');
     nodeModulesSrc = path.resolve('/path/to/nodeModulesSrc');
-    projectRoot = path.resolve('/path/to/projectRoot');
 
     appDir = path.join(appAndAddons, 'app-tree-output/my-app');
     addonDir = path.join(appAndAddons, 'addon-tree-output/my-addon');
 
-    rewriteImportPath = _rewriteImportPath(
-      appAndAddons,
-      amdModules,
-      nodeModulesSrc,
-      projectRoot
-    );
+    rewriteImportPath = function() {
+      return _rewriteImportPath(
+        appAndAddons,
+        amdModules,
+        nodeModulesSrc,
+        commonDir
+      ).apply(this, arguments);
+    };
   });
 
-  function relative(root, id) {
+  function relativeId(root, id) {
     return _relative(appAndAddons, path.join(root, id));
   }
 
+  function relativeParent(root, id) {
+    return _relative(commonDir, path.join(root, id));
+  }
+
   it('original addon lookup passes through', function() {
+    commonDir = appAndAddons;
+
     let id = 'my-addon/addon';
-    let parent = relative(appDir, 'app.js');
+    let parent = relativeParent(appDir, 'app.js');
 
     let result = rewriteImportPath(id, parent);
 
@@ -48,8 +55,10 @@ describe.only('Compile - rewriteImportPath', function() {
   });
 
   it('removes .js', function() {
-    let id = relative(addonDir, 'addon.js');
-    let parent = relative(appDir, 'app.js');
+    commonDir = appAndAddons;
+
+    let id = relativeId(addonDir, 'addon.js');
+    let parent = relativeParent(appDir, 'app.js');
 
     let result = rewriteImportPath(id, parent);
 
@@ -57,8 +66,10 @@ describe.only('Compile - rewriteImportPath', function() {
   });
 
   it('removes index.js', function() {
-    let id = relative(addonDir, 'index.js');
-    let parent = relative(appDir, 'app.js');
+    commonDir = appAndAddons;
+
+    let id = relativeId(addonDir, 'index.js');
+    let parent = relativeParent(appDir, 'app.js');
 
     let result = rewriteImportPath(id, parent);
 
@@ -66,18 +77,20 @@ describe.only('Compile - rewriteImportPath', function() {
   });
 
   describe('absolute', function() {
-    it('collides with project config/environment', function() {
-      let id = path.join(projectRoot, 'config/environment.js');
-      let parent = relative(appDir, 'app.js');
+    // it('collides with project config/environment', function() {
+    //   let id = path.join(projectRoot, 'config/environment.js');
+    //   let parent = relative(appDir, 'app.js');
 
-      let result = rewriteImportPath(id, parent);
+    //   let result = rewriteImportPath(id, parent);
 
-      expect(result).to.equal('./config/environment');
-    });
+    //   expect(result).to.equal('./config/environment');
+    // });
 
     it('config/environment', function() {
+      commonDir = appDir;
+
       let id = path.join(appDir, 'config/environment.js');
-      let parent = relative(appDir, 'app.js');
+      let parent = relativeParent(appDir, 'app.js');
 
       let result = rewriteImportPath(id, parent);
 
@@ -85,6 +98,8 @@ describe.only('Compile - rewriteImportPath', function() {
     });
 
     it('node_modules', function() {
+      commonDir = path.join(nodeModulesSrc, 'lodash');
+
       let id = path.join(nodeModulesSrc, 'lodash/multiply.js');
       let parent = path.join(nodeModulesSrc, 'lodash/lodash.js');
 
@@ -96,8 +111,10 @@ describe.only('Compile - rewriteImportPath', function() {
 
   describe('relative', function() {
     it('app to addon', function() {
-      let id = relative(addonDir, 'addon.js');
-      let parent = relative(appDir, 'app.js');
+      commonDir = appAndAddons;
+
+      let id = relativeId(addonDir, 'addon.js');
+      let parent = relativeParent(appDir, 'app.js');
 
       let result = rewriteImportPath(id, parent);
 
@@ -105,8 +122,10 @@ describe.only('Compile - rewriteImportPath', function() {
     });
 
     it('app to node_modules', function() {
-      let id = relative(nodeModulesSrc, 'lodash/multiply.js');
-      let parent = relative(appDir, 'app.js');
+      commonDir = path.resolve('/path/to');
+
+      let id = relativeId(nodeModulesSrc, 'lodash/multiply.js');
+      let parent = relativeParent(appDir, 'app.js');
 
       let result = rewriteImportPath(id, parent);
 
@@ -114,8 +133,10 @@ describe.only('Compile - rewriteImportPath', function() {
     });
 
     it('app relative same dir', function() {
-      let id = relative(appDir, 'resolver.js');
-      let parent = relative(appDir, 'app.js');
+      commonDir = appDir;
+
+      let id = relativeId(appDir, 'resolver.js');
+      let parent = relativeParent(appDir, 'app.js');
 
       let result = rewriteImportPath(id, parent);
 
@@ -123,8 +144,10 @@ describe.only('Compile - rewriteImportPath', function() {
     });
 
     it('app relative different dir', function() {
-      let id = relative(appDir, 'resolver.js');
-      let parent = relative(appDir, 'routes/application.js');
+      commonDir = appDir;
+
+      let id = relativeId(appDir, 'resolver.js');
+      let parent = relativeParent(appDir, 'routes/application.js');
 
       let result = rewriteImportPath(id, parent);
 
@@ -132,8 +155,10 @@ describe.only('Compile - rewriteImportPath', function() {
     });
 
     it('addon relative same dir', function() {
-      let id = relative(addonDir, 'addon.js');
-      let parent = relative(addonDir, 'index.js');
+      commonDir = addonDir;
+
+      let id = relativeId(addonDir, 'addon.js');
+      let parent = relativeParent(addonDir, 'index.js');
 
       let result = rewriteImportPath(id, parent);
 
@@ -141,8 +166,10 @@ describe.only('Compile - rewriteImportPath', function() {
     });
 
     it('addon relative different dir', function() {
-      let id = relative(addonDir, 'addon.js');
-      let parent = relative(addonDir, 'lib/index.js');
+      commonDir = addonDir;
+
+      let id = relativeId(addonDir, 'addon.js');
+      let parent = relativeParent(addonDir, 'lib/index.js');
 
       let result = rewriteImportPath(id, parent);
 
@@ -150,8 +177,10 @@ describe.only('Compile - rewriteImportPath', function() {
     });
 
     it('node_modules relative same dir', function() {
-      let id = relative(nodeModulesSrc, 'lodash/multiply.js');
-      let parent = relative(nodeModulesSrc, 'lodash/lodash.js');
+      commonDir = path.join(nodeModulesSrc, 'lodash');
+
+      let id = relativeId(nodeModulesSrc, 'lodash/multiply.js');
+      let parent = relativeParent(nodeModulesSrc, 'lodash/lodash.js');
 
       let result = rewriteImportPath(id, parent);
 
@@ -159,8 +188,10 @@ describe.only('Compile - rewriteImportPath', function() {
     });
 
     it('node_modules relative different dir', function() {
-      let id = relative(nodeModulesSrc, 'lodash/multiply.js');
-      let parent = relative(nodeModulesSrc, 'lodash/lib/index.js');
+      commonDir = path.join(nodeModulesSrc, 'lodash');
+
+      let id = relativeId(nodeModulesSrc, 'lodash/multiply.js');
+      let parent = relativeParent(nodeModulesSrc, 'lodash/lib/index.js');
 
       let result = rewriteImportPath(id, parent);
 

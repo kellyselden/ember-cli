@@ -60,6 +60,7 @@
     "chalk": "^2.0.1",
     "ci-info": "^1.1.2",
     "clean-base-url": "^1.0.0",
+    "commondir": "^1.0.1",
     "compression": "^1.4.4",
     "configstore": "^3.0.0",
     "console-ui": "^2.2.2",
