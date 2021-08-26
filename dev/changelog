@@ -141,14 +141,28 @@ async function main() {
     .then(processPages)
     .then(async contributions => {
       for (let entry of contributions) {
-        if (entry.number) {
-          let prInfo = await github.pulls.get({
-            owner: 'ember-cli',
-            repo: 'ember-cli',
-            // eslint-disable-next-line
-          pull_number: entry.number
-          });
+        let prInfo;
 
+        if (entry.number) {
+          try {
+            prInfo = await github.pulls.get({
+              owner: 'ember-cli',
+              repo: 'ember-cli',
+              // eslint-disable-next-line camelcase
+              pull_number: entry.number,
+            });
+          } catch (err) {
+            // Contributors can merge all they want inside their branch/fork.
+            // Those merges will match our regex, but the PR number won't match
+            // our repo. We need to exclude 404s here, and also remove them
+            // from the changelog output.
+            if (err.status !== 404) {
+              throw err;
+            }
+          }
+        }
+
+        if (prInfo) {
           entry.title = prInfo.data.title;
           entry.author = prInfo.data.user.login;
         } else {
